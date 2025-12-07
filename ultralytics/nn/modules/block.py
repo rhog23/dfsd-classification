@@ -1845,8 +1845,6 @@ class TimmVision(nn.Module):
     Args:
         model (str): Name of the timm model to load (e.g., 'ghostnetv2_100').
         pretrained (bool, optional): Whether to load pre-trained weights. Default is True.
-        features_only (bool, optional): Return intermediate features. Default is True.
-        out_indices (tuple, optional): Indices of output features. Default is (-1,) for last feature.
 
     Attributes:
         m (nn.Module): The loaded timm model without classifier.
@@ -1861,39 +1859,26 @@ class TimmVision(nn.Module):
         self,
         model: str,
         pretrained: bool = True,
-        features_only: bool = True,
-        out_indices: tuple = (-1,),
     ):
         """Load the model from timm library.
 
         Args:
             model (str): Name of the timm model to load.
             pretrained (bool): Whether to load pre-trained weights.
-            features_only (bool): Whether to return only features without classifier.
-            out_indices (tuple): Which feature layers to output.
         """
         import timm  # scope for faster 'import ultralytics'
 
         super().__init__()
 
-        if features_only:
-            # Load model without classifier, return features only
-            self.m = timm.create_model(
-                model,
-                pretrained=pretrained,
-                features_only=True,
-                out_indices=out_indices,
-            )
-        else:
-            # Load full model and remove classifier
-            self.m = timm.create_model(model, pretrained=pretrained)
-            # Remove the classifier head
-            if hasattr(self.m, "classifier"):
-                self.m.classifier = nn.Identity()
-            elif hasattr(self.m, "fc"):
-                self.m.fc = nn.Identity()
-            elif hasattr(self.m, "head"):
-                self.m.head = nn.Identity()
+        # Load full model and remove classifier
+        self.m = timm.create_model(model, pretrained=pretrained)
+        # Remove the classifier head
+        if hasattr(self.m, "classifier"):
+            self.m.classifier = nn.Identity()
+        elif hasattr(self.m, "fc"):
+            self.m.fc = nn.Identity()
+        elif hasattr(self.m, "head"):
+            self.m.head = nn.Identity()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the model.
@@ -1904,11 +1889,7 @@ class TimmVision(nn.Module):
         Returns:
             (torch.Tensor): Output feature tensor.
         """
-        features = self.m(x)
-        # If features_only=True, timm returns a list, get the last one
-        if isinstance(features, (list, tuple)):
-            return features[-1]
-        return features
+        return self.m.forward_features(x)
 
 
 class AAttn(nn.Module):
