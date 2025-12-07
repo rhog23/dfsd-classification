@@ -64,6 +64,7 @@ from ultralytics.nn.modules import (
     SCDown,
     Segment,
     TorchVision,
+    TimmVision,
     WorldDetect,
     YOLOEDetect,
     YOLOESegment,

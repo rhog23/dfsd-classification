@@ -59,6 +59,7 @@ from .block import (
     ResNetLayer,
     SCDown,
     TorchVision,
+    TimmVision
 )
 from .conv import (
     CBAM,
@@ -172,6 +173,7 @@ __all__ = (
     "Segment",
     "SpatialAttention",
     "TorchVision",
+    "TimmVision",
     "TransformerBlock",
     "TransformerEncoderLayer",
     "TransformerLayer",
