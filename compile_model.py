@@ -1,7 +1,7 @@
 from ultralytics.nn.tasks import ClassificationModel
 from torchsummary import summary
 
-model = ClassificationModel("yolo11n-cls-ghostnetv2.yaml")
+model = ClassificationModel("yolo11n-cls-resnet18.yaml")
 # print(model)
 summary(model, (3, 224, 224))
 

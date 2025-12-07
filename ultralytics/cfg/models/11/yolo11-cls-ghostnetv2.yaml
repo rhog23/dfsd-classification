@@ -10,8 +10,8 @@ nc: 1000 # number of classes
 # ResNet18 backbone
 backbone:
 # [from, repeats, module, args]
-- [ -1, 1, TimmVision, [ ghostnetv2_100, True ] ]
+- [ -1, 1, TimmVision, [ 160, ghostnetv2_100, True ] ]
 
 # YOLO11n head
 head:
-- [ -1, 1, Classify, [ nc, 960 ] ] # Classify
+- [ -1, 1, Classify, [ nc ] ] # Classify
