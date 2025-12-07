@@ -1854,6 +1854,7 @@ class TimmVision(nn.Module):
         truncate: int = 1,
         split: bool = False,
     ):
+        import timm
         super().__init__()
         self.split = split
 
