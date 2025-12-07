@@ -1855,7 +1855,7 @@ class TimmVision(nn.Module):
     ):
         import timm
         super().__init__()
-        self.m = timm.create_model(model, pretrained=pretrained, features_only=only_features)
+        self.m = timm.create_model(str(model), pretrained=pretrained, features_only=only_features)
 
         if unwrap:
             layers = list(self.m.children())
