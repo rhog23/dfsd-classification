@@ -10,7 +10,7 @@ nc: 1000 # number of classes
 # ResNet18 backbone
 backbone:
   # [from, repeats, module, args]
-  - [-1, 1, TimmVision, [ghostnetv2_100, True]] # truncate two layers from the end
+  - [-1, 1, TimmVision, [160, ghostnetv2_100, True]]
 
 # YOLO11n head
 head:
