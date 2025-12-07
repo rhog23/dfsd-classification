@@ -1851,81 +1851,20 @@ class TimmVision(nn.Module):
         model: str,
         pretrained: bool = True,
         unwrap: bool = True,
-        truncate: int = 1,
-        split: bool = False,
+        only_features: bool = True,
     ):
         import timm
         super().__init__()
-        self.split = split
+        self.m = timm.create_model(model, pretrained=pretrained, features_only=only_features)
 
-        # ------------------------------
-        # Load timm model
-        # ------------------------------
-        self.m = timm.create_model(model, pretrained=pretrained)
-
-        # ------------------------------
-        # Remove classifier head safely
-        # ------------------------------
-        if hasattr(self.m, "reset_classifier"):
-            self.m.reset_classifier(0)  # num_classes=0
-        else:
-            # fallback
-            for attr in ("classifier", "head", "fc"):
-                if hasattr(self.m, attr):
-                    setattr(self.m, attr, nn.Identity())
-
-        # ------------------------------
-        # Unwrap the model to sequential
-        # ------------------------------
         if unwrap:
             layers = list(self.m.children())
-
-            # Some timm models have deeper nesting (same logic as TorchVision)
-            if isinstance(layers[0], nn.Sequential):
-                layers = [*list(layers[0].children()), *layers[1:]]
-
-            # Remove last `truncate` modules
-            if truncate:
-                layers = layers[:-truncate]
-
             self.m = nn.Sequential(*layers)
 
-        # ------------------------------
-        # Required by Ultralytics
-        # ------------------------------
-        # Channels (YOLO neck compatibility)
-        self.channels = getattr(self.m, "num_features", None)
-        if self.channels is None:
-            # fallback: last conv layer out_channels
-            self.channels = (
-                list(self.m.modules())[-1].out_channels
-                if hasattr(list(self.m.modules())[-1], "out_channels")
-                else None
-            )
-
-        # Stride for YOLO spatial mapping
-        self.stride = 32  # safe default
-
-        # Disable saving features (RAM safety)
-        self.save = False
-
     def forward(self, x: torch.Tensor):
-        # ------------------------------
-        # Split mode (TorchVision-style)
-        # ------------------------------
-        if self.split:
-            y = [x]
-            for m in self.m:
-                y.append(m(y[-1]))
-            return y
+        y = self.m(x)
 
-        # ------------------------------
-        # Standard forward
-        # ------------------------------
-        out = self.m(x)
-
-        # Prevent autograd RAM leaks
-        return out.contiguous()
+        return y
 
 
 class AAttn(nn.Module):
