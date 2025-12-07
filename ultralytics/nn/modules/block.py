@@ -1837,59 +1837,94 @@ class TorchVision(nn.Module):
 
 
 class TimmVision(nn.Module):
-    """TimmVision module to allow loading any timm model as a backbone.
+    """
+    TimmVision module to allow loading any timm model similar to TorchVision wrapper.
 
-    This class provides a way to load a model from the timm library, optionally load pre-trained weights, and
-    customize the model by removing the classifier head.
-
-    Args:
-        model (str): Name of the timm model to load (e.g., 'ghostnetv2_100').
-        pretrained (bool, optional): Whether to load pre-trained weights. Default is True.
-
-    Attributes:
-        m (nn.Module): The loaded timm model without classifier.
-
-    Example:
-        >>> backbone = TimmVision('ghostnetv2_100', pretrained=True)
-        >>> x = torch.randn(1, 3, 224, 224)
-        >>> features = backbone(x)
+    Designed for Ultralytics:
+    - Removes classifier safely
+    - Supports unwrap/truncate like TorchVision
+    - Returns a single tensor by default
     """
 
     def __init__(
         self,
         model: str,
         pretrained: bool = True,
+        unwrap: bool = True,
+        truncate: int = 1,
+        split: bool = False,
     ):
-        """Load the model from timm library.
-
-        Args:
-            model (str): Name of the timm model to load.
-            pretrained (bool): Whether to load pre-trained weights.
-        """
-        import timm  # scope for faster 'import ultralytics'
-
         super().__init__()
+        self.split = split
 
-        # Load full model and remove classifier
+        # ------------------------------
+        # Load timm model
+        # ------------------------------
         self.m = timm.create_model(model, pretrained=pretrained)
-        # Remove the classifier head
-        if hasattr(self.m, "classifier"):
-            self.m.classifier = nn.Identity()
-        elif hasattr(self.m, "fc"):
-            self.m.fc = nn.Identity()
-        elif hasattr(self.m, "head"):
-            self.m.head = nn.Identity()
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass through the model.
+        # ------------------------------
+        # Remove classifier head safely
+        # ------------------------------
+        if hasattr(self.m, "reset_classifier"):
+            self.m.reset_classifier(0)  # num_classes=0
+        else:
+            # fallback
+            for attr in ("classifier", "head", "fc"):
+                if hasattr(self.m, attr):
+                    setattr(self.m, attr, nn.Identity())
 
-        Args:
-            x (torch.Tensor): Input tensor.
+        # ------------------------------
+        # Unwrap the model to sequential
+        # ------------------------------
+        if unwrap:
+            layers = list(self.m.children())
 
-        Returns:
-            (torch.Tensor): Output feature tensor.
-        """
-        return self.m.forward_features(x)
+            # Some timm models have deeper nesting (same logic as TorchVision)
+            if isinstance(layers[0], nn.Sequential):
+                layers = [*list(layers[0].children()), *layers[1:]]
+
+            # Remove last `truncate` modules
+            if truncate:
+                layers = layers[:-truncate]
+
+            self.m = nn.Sequential(*layers)
+
+        # ------------------------------
+        # Required by Ultralytics
+        # ------------------------------
+        # Channels (YOLO neck compatibility)
+        self.channels = getattr(self.m, "num_features", None)
+        if self.channels is None:
+            # fallback: last conv layer out_channels
+            self.channels = (
+                list(self.m.modules())[-1].out_channels
+                if hasattr(list(self.m.modules())[-1], "out_channels")
+                else None
+            )
+
+        # Stride for YOLO spatial mapping
+        self.stride = 32  # safe default
+
+        # Disable saving features (RAM safety)
+        self.save = False
+
+    def forward(self, x: torch.Tensor):
+        # ------------------------------
+        # Split mode (TorchVision-style)
+        # ------------------------------
+        if self.split:
+            y = [x]
+            for m in self.m:
+                y.append(m(y[-1]))
+            return y
+
+        # ------------------------------
+        # Standard forward
+        # ------------------------------
+        out = self.m(x)
+
+        # Prevent autograd RAM leaks
+        return out.contiguous()
 
 
 class AAttn(nn.Module):
