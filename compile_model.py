@@ -4,7 +4,7 @@ from torchsummary import summary
 # model = ClassificationModel("yolo12m-cls-cbam-lyr7.yaml")
 model = ClassificationModel("yolo11s-cls-cbam.yaml")
 # print(model)
-# summary(model, (3, 224, 224))
+summary(model, (3, 224, 224))
 
 # # Count GhostConv layers
 # ghost_count = 0
