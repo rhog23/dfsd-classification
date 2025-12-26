@@ -1853,9 +1853,12 @@ class TimmVision(nn.Module):
         unwrap: bool = True,
         only_features: bool = True,
     ):
-        import timm
+        import timm  # scope for faster 'import ultralytics'
+
         super().__init__()
-        self.m = timm.create_model(str(model), pretrained=pretrained, features_only=only_features)
+        self.m = timm.create_model(
+            str(model), pretrained=pretrained, features_only=only_features
+        )
 
         if unwrap:
             layers = list(self.m.children())
